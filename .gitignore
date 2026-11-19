@@ -1,0 +1,14 @@
+# Raw corpora and payloads stay out of git
+data/**/*
+!data/**/
+!data/**/*.md
+!data/**/*.py
+!data/**/.gitkeep
+*.parquet
+*.jsonl
+*.jsonl.gz
+payloads/
+.env
+__pycache__/
+.venv/
+.DS_Store
