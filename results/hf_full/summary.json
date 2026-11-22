@@ -1,0 +1,52 @@
+{
+ "input": "data/huggingface/cards.jsonl.gz",
+ "cards_scanned": 1247149,
+ "cards_with_hidden_text": 583656,
+ "cards_with_rare_hidden_text": 10618,
+ "common_threshold_cards": 50,
+ "distinct_hidden_texts": 6885,
+ "all_regions": {
+  "bidi": {
+   "regions": 67,
+   "cards": 67
+  },
+  "css_hidden": {
+   "regions": 3500,
+   "cards": 679
+  },
+  "html_comment": {
+   "regions": 6709206,
+   "cards": 580196
+  },
+  "yaml_frontmatter": {
+   "regions": 6996,
+   "cards": 6027
+  },
+  "zero_width": {
+   "regions": 139,
+   "cards": 139
+  }
+ },
+ "rare_regions": {
+  "bidi": {
+   "regions": 67,
+   "cards": 67
+  },
+  "css_hidden": {
+   "regions": 2720,
+   "cards": 608
+  },
+  "html_comment": {
+   "regions": 9652,
+   "cards": 5739
+  },
+  "yaml_frontmatter": {
+   "regions": 4967,
+   "cards": 4174
+  },
+  "zero_width": {
+   "regions": 139,
+   "cards": 139
+  }
+ }
+}
