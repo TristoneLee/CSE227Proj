@@ -1,6 +1,9 @@
 """Download the Hugging Face model-card dump and export it as one normalized file.
 
-Source: the dataset `modelbiome/ai_ecosystem_withmodelcards` on the Hugging Face Hub.
+Source: the dataset `modelbiome/ai_ecosystem_withmodelcards` on the Hugging Face Hub,
+pinned to revision 4cb5d87 (models snapshot 2025-07-13, cards scraped by 2025-07-21).
+It is a single 5.2 GB CSV. The Hub's auto-converted parquet is only partial, so we
+download the CSV. Columns: model_id, modelCard, downloads, parent_model, ...
 
 Steps:
   python data/huggingface/download.py inspect                 # list shards, print schema + 2 rows
@@ -22,6 +25,8 @@ Raw data is git-ignored. Do not commit it.
 from __future__ import annotations
 
 import argparse
+import ast
+import csv
 import gzip
 import hashlib
 import heapq
@@ -30,6 +35,8 @@ import sys
 from pathlib import Path
 
 REPO_ID = "modelbiome/ai_ecosystem_withmodelcards"
+REVISION = "4cb5d8739a8fce7c03826994dd756c244b4126bf"
+DATA_SUFFIXES = (".parquet", ".csv")
 HERE = Path(__file__).resolve().parent
 RAW = HERE / "raw"
 
@@ -53,42 +60,82 @@ def pick(columns: list[str], kind: str, override: str | None) -> str | None:
     return None
 
 
-def parquet_files() -> list[str]:
+def data_files() -> list[str]:
     from huggingface_hub import list_repo_files
 
-    files = sorted(f for f in list_repo_files(REPO_ID, repo_type="dataset") if f.endswith(".parquet"))
+    files = sorted(f for f in list_repo_files(REPO_ID, repo_type="dataset", revision=REVISION)
+                   if f.endswith(DATA_SUFFIXES))
     if not files:
-        sys.exit(f"no .parquet files found in {REPO_ID}; check the dataset page")
+        sys.exit(f"no data files found in {REPO_ID}; check the dataset page")
     return files
 
 
 def fetch_files(files: list[str]) -> list[Path]:
     from huggingface_hub import hf_hub_download
 
-    return [Path(hf_hub_download(REPO_ID, f, repo_type="dataset", local_dir=RAW)) for f in files]
+    return [Path(hf_hub_download(REPO_ID, f, repo_type="dataset", revision=REVISION, local_dir=RAW))
+            for f in files]
+
+
+def _parse_list(v):
+    """parent_model and friends are stored as Python-list strings, e.g. "['a/b']"."""
+    if isinstance(v, str) and v.startswith("["):
+        try:
+            return ast.literal_eval(v)
+        except (ValueError, SyntaxError):
+            return v
+    return v
+
+
+def _int(v):
+    try:
+        return int(float(v))
+    except (TypeError, ValueError):
+        return None
+
+
+def iter_rows(path: Path, batch_size: int = 2000):
+    """Yield (columns, list_of_row_dicts) batches from a parquet or CSV file."""
+    if path.suffix == ".csv":
+        csv.field_size_limit(sys.maxsize)
+        with open(path, newline="", encoding="utf-8", errors="replace") as f:
+            reader = csv.DictReader(f)
+            batch = []
+            for row in reader:
+                batch.append(row)
+                if len(batch) >= batch_size:
+                    yield reader.fieldnames, batch
+                    batch = []
+            if batch:
+                yield reader.fieldnames, batch
+    else:
+        import pyarrow.parquet as pq
+
+        pf = pq.ParquetFile(path)
+        for b in pf.iter_batches(batch_size=batch_size):
+            yield pf.schema_arrow.names, b.to_pylist()
 
 
 def cmd_inspect(args) -> None:
-    import pyarrow.parquet as pq
-
-    files = parquet_files()
-    print(f"{len(files)} parquet shard(s) in {REPO_ID}:")
+    files = data_files()
+    print(f"{len(files)} data file(s) in {REPO_ID}@{REVISION[:7]}:")
     for f in files[:20]:
         print("  ", f)
     if len(files) > 20:
         print(f"   ... and {len(files) - 20} more")
-    first = fetch_files(files[:1])[0]
-    pf = pq.ParquetFile(first)
-    print(f"\nschema of {files[0]} ({pf.metadata.num_rows} rows):\n{pf.schema_arrow}")
-    cols = pf.schema_arrow.names
+    local = sorted(p for p in RAW.rglob("*") if p.suffix in DATA_SUFFIXES)
+    if not local:
+        sys.exit("\nnothing downloaded yet; run `fetch` (the CSV is 5.2 GB), then `inspect` again")
+    cols, rows = next(iter_rows(local[0], batch_size=2))
+    print(f"\ncolumns of {local[0].name}: {cols}")
     print("\nauto-detected:", {k: pick(cols, k, None) for k in CANDIDATES})
-    for row in pf.read_row_group(0).slice(0, 2).to_pylist():
+    for row in rows:
         print(json.dumps({k: (str(v)[:200] if v is not None else None) for k, v in row.items()},
                          ensure_ascii=False, indent=1))
 
 
 def cmd_fetch(args) -> None:
-    files = parquet_files()
+    files = data_files()
     if args.max_shards:
         files = files[: args.max_shards]
     for p in fetch_files(files):
@@ -100,28 +147,25 @@ def _hash(seed: int, key: str) -> int:
 
 
 def iter_cards(args):
-    import pyarrow.parquet as pq
-
-    paths = sorted(RAW.rglob("*.parquet"))
+    paths = sorted(p for p in RAW.rglob("*") if p.suffix in DATA_SUFFIXES)
     if not paths:
-        sys.exit("no shards in data/huggingface/raw/; run `fetch` first")
+        sys.exit("no data in data/huggingface/raw/; run `fetch` first")
     for path in paths:
-        pf = pq.ParquetFile(path)
-        cols = pf.schema_arrow.names
-        c = {k: pick(cols, k, getattr(args, f"{k}_col")) for k in CANDIDATES}
-        if not c["card"] or not c["id"]:
-            sys.exit(f"{path.name}: cannot find card/id columns in {cols}; use --card-col/--id-col")
-        wanted = [v for v in c.values() if v]
-        for batch in pf.iter_batches(columns=wanted, batch_size=2000):
-            for row in batch.to_pylist():
+        c = None
+        for cols, rows in iter_rows(path):
+            if c is None:
+                c = {k: pick(cols, k, getattr(args, f"{k}_col")) for k in CANDIDATES}
+                if not c["card"] or not c["id"]:
+                    sys.exit(f"{path.name}: cannot find card/id columns in {cols}; use --card-col/--id-col")
+            for row in rows:
                 card = row.get(c["card"])
-                if not isinstance(card, str) or not card.strip():
+                if not isinstance(card, str) or not card.strip() or card.strip() in ("nan", "None"):
                     continue
                 yield {
                     "id": str(row[c["id"]]),
                     "card": card,
-                    "downloads": row.get(c["downloads"]) if c["downloads"] else None,
-                    "base_model": row.get(c["base"]) if c["base"] else None,
+                    "downloads": _int(row.get(c["downloads"])) if c["downloads"] else None,
+                    "base_model": _parse_list(row.get(c["base"])) if c["base"] else None,
                     "source": "huggingface",
                 }
 
@@ -153,7 +197,7 @@ def main(argv=None) -> None:
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("inspect").set_defaults(fn=cmd_inspect)
     f = sub.add_parser("fetch")
-    f.add_argument("--max-shards", type=int, default=0, help="only the first N shards (for a quick test)")
+    f.add_argument("--max-shards", type=int, default=0, help="only the first N files (for a quick test)")
     f.set_defaults(fn=cmd_fetch)
     e = sub.add_parser("export")
     e.add_argument("--sample", type=int, default=0, help="keep N cards (0 = all)")

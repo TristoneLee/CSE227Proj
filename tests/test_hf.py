@@ -85,3 +85,42 @@ def test_export_sample_is_reproducible(tmp_path, monkeypatch):
     assert len(a) == 20 and a == b and a != c
     assert {"id", "card", "downloads", "base_model", "source"} <= set(a[0])
     assert len(export(0, 0, "all.gz")) == 200  # empty card skipped
+
+
+def test_export_reads_csv(tmp_path, monkeypatch):
+    import csv as _csv
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    with open(raw / "dump.csv", "w", newline="") as f:
+        w = _csv.writer(f)
+        w.writerow(["Unnamed: 0", "model_id", "downloads", "parent_model", "modelCard"])
+        w.writerow([0, "a/b", "12", "['base/x']", "---\nlicense: mit\n---\n# A\n<!-- multi\nline -->\n"])
+        w.writerow([1, "c/d", "", "[]", ""])
+    monkeypatch.setattr(download, "RAW", raw)
+    args = SimpleNamespace(sample=0, seed=0, out=str(tmp_path / "o.gz"),
+                           card_col=None, id_col=None, downloads_col=None, base_col=None)
+    download.cmd_export(args)
+    with gzip.open(tmp_path / "o.gz", "rt") as f:
+        rows = [json.loads(x) for x in f]
+    assert rows == [{"id": "a/b", "card": "---\nlicense: mit\n---\n# A\n<!-- multi\nline -->\n",
+                     "downloads": 12, "base_model": ["base/x"], "source": "huggingface"}]
+
+
+def test_run_parallel_matches_serial(tmp_path):
+    inp = tmp_path / "cards.jsonl.gz"
+    cards = [{"id": f"t/{i}", "card": CARD_TEMPLATE if i % 3 else CARD_ATTACK} for i in range(40)]
+    with gzip.open(inp, "wt") as f:
+        f.writelines(json.dumps(c) + "\n" for c in cards)
+    a = scan_hf.run(str(inp), tmp_path / "a", with_yaml=True, common=5, templates=set(), workers=1, batch=7)
+    b = scan_hf.run(str(inp), tmp_path / "b", with_yaml=True, common=5, templates=set(), workers=3, batch=7)
+    drop = lambda d: {k: v for k, v in d.items() if k != "input"}
+    assert drop(a) == drop(b)
+    assert (tmp_path / "a" / "findings.jsonl").read_text() == (tmp_path / "b" / "findings.jsonl").read_text()
+
+
+def test_yaml_skips_documented_keys():
+    card = ("---\nbase_model: some-org/a-very-long-base-model-name-that-is-over-forty-chars\n"
+            "widget:\n- text: an example prompt that is long enough to count as prose here\n"
+            "custom_note: this custom key is not shown on the page but agents read the raw file\n---\n# M\n")
+    y = [r["key"] for r in scan_hf.scan_card(card, with_yaml=True)]
+    assert y == ["custom_note"]
