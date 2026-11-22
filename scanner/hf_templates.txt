@@ -1,0 +1,4 @@
+# Known boilerplate hidden text in Hugging Face model cards, one string per line.
+# Matching ignores case and whitespace. Regions that match are marked `template` and
+# left out of the "rare" counts. Build this list from `most_common` in summary.json,
+# and check each entry by hand before adding it.

@@ -12,3 +12,7 @@ payloads/
 __pycache__/
 .venv/
 .DS_Store
+
+# Scanner output that contains hidden text (summary.json is counts only and may be committed)
+results/**/findings*
+results/**/most_common*

@@ -1,0 +1,7 @@
+# Python 3.11+.  Install: pip install -r requirements.txt
+pyarrow>=15
+huggingface_hub>=0.24
+pyyaml>=6
+pytest>=8
+# Radware's detector (MIT), pinned to the commit we read on 2026-11-22.
+ipiscan @ git+https://github.com/rdwr-gabin/github-ipi-in-the-wild@140f225e51ffb7ed1361d512adb36315507dbdf7
