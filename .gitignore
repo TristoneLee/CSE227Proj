@@ -13,6 +13,7 @@ __pycache__/
 .venv/
 .DS_Store
 
-# Scanner output that contains hidden text (summary.json is counts only and may be committed)
+# Scanner/classifier output that contains hidden text (summary files are counts only and may be committed)
 results/**/findings*
 results/**/most_common*
+results/**/classified*
