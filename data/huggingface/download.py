@@ -139,7 +139,7 @@ def cmd_fetch(args) -> None:
     if args.max_shards:
         files = files[: args.max_shards]
     for p in fetch_files(files):
-        print("ok", p.relative_to(HERE))
+        print("ok", p)
 
 
 def _hash(seed: int, key: str) -> int:

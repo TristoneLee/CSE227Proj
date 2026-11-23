@@ -10,6 +10,15 @@ Raw dumps stay local and are git-ignored. Commit only the pull scripts and notes
 
 ## Hugging Face quickstart
 
+One command does all of the steps below and checks the result against the committed counts:
+
+```bash
+bash scripts/setup_local.sh                 # full run: ~5 GB download, ~20 min
+bash scripts/setup_local.sh --sample 10000  # quick check, ~2 min after the download
+```
+
+Or step by step:
+
 ```bash
 pip install -r requirements.txt
 python data/huggingface/download.py inspect                 # check the columns first
