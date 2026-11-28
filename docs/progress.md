@@ -60,7 +60,15 @@ READMEs) would predict about 66 in 1.25M cards.
 - **Hidden text never goes into git**; only counts are committed.
 
 ## Next steps (in priority order)
-1. **Hand-review the 167 rare LLM positives** (and the 1 boilerplate one). Expect mostly
+1. **Hand-review the 167 rare LLM positives**. Claude pre-labelled all 168 on 2026-11-27
+   (columns `claude_*` in `review/hf_hand_labels.csv`; not hand labels): 166 false positive,
+   2 uncertain (pseudo-command glyph strings). Main FP sources: model's own prompt config in
+   YAML (`system_prompt`, `prompt_template`, `lm_studio.system_prompt`) 51, commented-out
+   prose 44, LoRA `instance_prompt` trigger words 42, template hints 13. Scanner issues:
+   Persian ZWNJ (U+200C) is normal orthography (6 FPs), bidi marks around pasted phone
+   numbers. Two cards flagged for harmful content (n=25, n=32): humans should check and
+   decide whether to report to HF. Original item:
+    (and the 1 boilerplate one). Expect mostly
    false positives; suggested categories: template_hint, model_system_prompt,
    commented_prose. Record labels by text_key in `review/` (no hidden text).
 2. **Fresh Hugging Face sample.** The snapshot predates the 2026 growth Radware saw
