@@ -119,6 +119,12 @@ def summarize(distinct: list[dict], done: dict[str, dict], model: str) -> dict:
         "positives_by_intent": dict(Counter(str(r.get("intent")) for r in pos)),
         "positives_by_technique": dict(Counter(by_key[r["text_key"]]["technique"] for r in pos)),
         "positives_in_common_text": sum(1 for r in pos if by_key[r["text_key"]]["common"]),
+        # Rare = not boilerplate (text in < common_threshold cards); the numbers to report.
+        "rare_positive_texts": len(rare := [r for r in pos if not by_key[r["text_key"]]["common"]]),
+        "rare_positive_cards": cards(rare),
+        "rare_explicit_prompt_texts": sum(1 for r in rare if r.get("explicit_prompt")),
+        "rare_positives_by_intent": dict(Counter(str(r.get("intent")) for r in rare)),
+        "rare_positives_by_technique": dict(Counter(by_key[r["text_key"]]["technique"] for r in rare)),
         "tokens": {"input": round(tin), "output": round(tout)},
         "cost_usd": round(tin / 1e6 * pin + tout / 1e6 * pout, 4),
     }

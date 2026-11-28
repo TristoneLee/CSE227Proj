@@ -14,11 +14,16 @@ Last updated 2026-11-27. Team: Leizhi Li, Mitchell Toney, Rathang Pandit.
    download (pinned CSV) → export → scan (Radware detector) → LLM classify.
 3. **Full Hugging Face scan** of the 2025-07 snapshot: `results/hf_full/summary.json`.
    Reproduced locally with `scripts/setup_local.sh` (matches the cloud run).
-4. **Classifier written** (`classify/classify_hf.py`). Trial run `--limit 80` on 2026-11-27:
-   80 classified, 0 API errors, 5 positive texts (12 cards; 3 operational, 1 self_serving,
-   1 malicious; 0 explicit prompts; confidence 0.5–0.8), ~$0.006. 5/80 is far above the
-   expected rate, so likely false positives: hand-review them. Trial summary not committed
-   (the full run overwrites it).
+4. **Full classification done** 2026-11-27 (`results/hf_full/classify_summary.json`,
+   Claude Haiku 5.5, Radware prompt, $0.4492): 6,344 / 6,344 texts, 0 API errors.
+   LLM positives: 168 texts; **rare (non-boilerplate): 167 texts in
+   516 cards**, 19 explicitly addressed to an AI. Rare by intent:
+   self_serving 71, operational 72, malicious 17, None 4, anti_ai 3. Rare by technique:
+   html_comment 42, yaml_frontmatter 107, css_hidden 9, zero_width 6, bidi 3. The one boilerplate positive is in
+   290,374 cards, so `positive_cards` is not the number to report.
+   **These are LLM labels, not results.** Trial hand review: the first 5 positives (by
+   text_key) were all false positives: commented-out prose, author template hints left in
+   (incl. a small org's own template), and a model's own `system_prompt` stored in YAML.
 5. **Local setup fix**: `scripts/setup_local.sh` failed on macOS bash 3.2 (empty array under
    `set -u`) for the full run; fixed. API key goes in git-ignored `.env`
    (`set -a; source .env; set +a` before running the classifier).
@@ -55,12 +60,13 @@ READMEs) would predict about 66 in 1.25M cards.
 - **Hidden text never goes into git**; only counts are committed.
 
 ## Next steps (in priority order)
-1. **Run the classifier, full** (trial done, resumes from it). Commit
-   `results/hf_full/classify_summary.json`. Hand-review the 5 trial positives first.
+1. **Hand-review the 167 rare LLM positives** (and the 1 boilerplate one). Expect mostly
+   false positives; suggested categories: template_hint, model_system_prompt,
+   commented_prose. Record labels by text_key in `review/` (no hidden text).
 2. **Fresh Hugging Face sample.** The snapshot predates the 2026 growth Radware saw
    (2.2× from June to September 2026). Fetch ~50k cards via the Hub API, sorted by last
    modified and by downloads, scan with the same pipeline, compare with 2025-07.
-3. **Hand review protocol**: written labelling rules, every positive reviewed, a
+3. **Hand review protocol** (needed for step 1): written labelling rules, every positive reviewed, a
    double-labelled sample, Cohen's κ; agreement of LLM vs hand labels.
 4. **PyPI** (BigQuery `bigquery-public-data.pypi`, dry-run first; add reStructuredText
    `.. ` comment detection) and **npm** (registry API, sample top + recent).

@@ -1,0 +1,45 @@
+{
+ "model": "claude-haiku-5-5",
+ "distinct_texts_to_classify": 6344,
+ "classified": 6344,
+ "positive_texts": 168,
+ "positive_cards": 290890,
+ "explicit_prompt_texts": 19,
+ "positives_by_intent": {
+  "self_serving": 71,
+  "operational": 73,
+  "malicious": 17,
+  "None": 4,
+  "anti_ai": 3
+ },
+ "positives_by_technique": {
+  "html_comment": 43,
+  "yaml_frontmatter": 107,
+  "css_hidden": 9,
+  "zero_width": 6,
+  "bidi": 3
+ },
+ "positives_in_common_text": 1,
+ "rare_positive_texts": 167,
+ "rare_positive_cards": 516,
+ "rare_explicit_prompt_texts": 19,
+ "rare_positives_by_intent": {
+  "self_serving": 71,
+  "operational": 72,
+  "malicious": 17,
+  "None": 4,
+  "anti_ai": 3
+ },
+ "rare_positives_by_technique": {
+  "html_comment": 42,
+  "yaml_frontmatter": 107,
+  "css_hidden": 9,
+  "zero_width": 6,
+  "bidi": 3
+ },
+ "tokens": {
+  "input": 2160463,
+  "output": 466337
+ },
+ "cost_usd": 0.4492
+}
