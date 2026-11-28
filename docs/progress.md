@@ -1,6 +1,6 @@
 # Progress
 
-Last updated 2026-11-25. Team: Leizhi Li, Mitchell Toney, Rathang Pandit.
+Last updated 2026-11-27. Team: Leizhi Li, Mitchell Toney, Rathang Pandit.
 
 ## Dates (from the plan)
 - ~~By Sun Nov 22: data pulled, scanner running on a sample~~ (Hugging Face done)
@@ -14,7 +14,14 @@ Last updated 2026-11-25. Team: Leizhi Li, Mitchell Toney, Rathang Pandit.
    download (pinned CSV) → export → scan (Radware detector) → LLM classify.
 3. **Full Hugging Face scan** of the 2025-07 snapshot: `results/hf_full/summary.json`.
    Reproduced locally with `scripts/setup_local.sh` (matches the cloud run).
-4. **Classifier written** (`classify/classify_hf.py`), not run yet: needs an API key.
+4. **Classifier written** (`classify/classify_hf.py`). Trial run `--limit 80` on 2026-11-27:
+   80 classified, 0 API errors, 5 positive texts (12 cards; 3 operational, 1 self_serving,
+   1 malicious; 0 explicit prompts; confidence 0.5–0.8), ~$0.006. 5/80 is far above the
+   expected rate, so likely false positives: hand-review them. Trial summary not committed
+   (the full run overwrites it).
+5. **Local setup fix**: `scripts/setup_local.sh` failed on macOS bash 3.2 (empty array under
+   `set -u`) for the full run; fixed. API key goes in git-ignored `.env`
+   (`set -a; source .env; set +a` before running the classifier).
 
 ## Hugging Face results so far (snapshot of 2025-07-13)
 
@@ -48,8 +55,8 @@ READMEs) would predict about 66 in 1.25M cards.
 - **Hidden text never goes into git**; only counts are committed.
 
 ## Next steps (in priority order)
-1. **Run the classifier** (local, needs `ANTHROPIC_API_KEY`): trial with `--limit 80`,
-   then full. Commit `results/hf_full/classify_summary.json`.
+1. **Run the classifier, full** (trial done, resumes from it). Commit
+   `results/hf_full/classify_summary.json`. Hand-review the 5 trial positives first.
 2. **Fresh Hugging Face sample.** The snapshot predates the 2026 growth Radware saw
    (2.2× from June to September 2026). Fetch ~50k cards via the Hub API, sorted by last
    modified and by downloads, scan with the same pipeline, compare with 2025-07.

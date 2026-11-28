@@ -46,7 +46,7 @@ echo "== 3/4 export and scan ($WORKERS workers)"
 if [[ -f "$CARDS" ]]; then
   echo "$CARDS exists, skipping export"
 else
-  python data/huggingface/download.py export "${EXPORT_ARGS[@]}"
+  python data/huggingface/download.py export ${EXPORT_ARGS[@]+"${EXPORT_ARGS[@]}"}
 fi
 python scanner/scan_hf.py "$CARDS" --out "$OUT" --yaml --workers "$WORKERS"
 
